@@ -136,7 +136,7 @@ public class BowBattleActive {
         if (source.isProjectile() && source.getAttacker() != player) {
             if (source.getAttacker() != null) {
                 ((ServerPlayerEntity)source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
-                gameSpace.getPlayers().sendMessage(new LiteralText(String.format("☠ - %s was shot by %s", source.getAttacker().getDisplayName().getString(), player.getDisplayName().getString())).formatted(Formatting.GRAY));
+                gameSpace.getPlayers().sendMessage(new LiteralText(String.format("☠ - %s was shot by %s", player.getDisplayName().getString(), source.getAttacker().getDisplayName().getString())).formatted(Formatting.GRAY));
             }
             participants.get(PlayerRef.of(player)).timesHit += 1;
             //Thanks Potatoboy9999 ;)
