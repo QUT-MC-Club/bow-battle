@@ -11,11 +11,13 @@ import net.minecraft.entity.projectile.PersistentProjectileEntity;
 import net.minecraft.item.ArrowItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
@@ -131,8 +133,25 @@ public class BowBattleActive {
     }
 
     private ActionResult onPlayerDamage(ServerPlayerEntity player, DamageSource source, float amount) {
-        if (source.isProjectile()) {
+        if (source.isProjectile() && source.getAttacker() != player) {
+            if (source.getAttacker() != null) {
+                ((ServerPlayerEntity)source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
+                gameSpace.getPlayers().sendMessage(new LiteralText(String.format("☠ - %s was shot by %s", source.getAttacker().getDisplayName().getString(), player.getDisplayName().getString())).formatted(Formatting.GRAY));
+            }
             participants.get(PlayerRef.of(player)).timesHit += 1;
+            //Thanks Potatoboy9999 ;)
+            for (int i = 0; i < 75; i++) {
+                gameSpace.getWorld().spawnParticles(
+                        ParticleTypes.FIREWORK,
+                        player.getPos().getX(),
+                        player.getPos().getY() + 1.0f,
+                        player.getPos().getZ(),
+                        1,
+                        ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
+                        ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
+                        ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
+                        0.1);
+            }
             this.spawnParticipant(player);
         }
         return ActionResult.FAIL;
@@ -210,7 +229,7 @@ public class BowBattleActive {
 
         Text message;
         if (winningPlayer != null) {
-            message = winningPlayer.getDisplayName().shallowCopy().append(" has won the game!").formatted(Formatting.GOLD);
+            message = new LiteralText("★ - ").append(winningPlayer.getDisplayName().shallowCopy().append(" has won the game by only being hit " + participants.get(PlayerRef.of(winningPlayer)).timesHit + " times!").formatted(Formatting.GOLD));
         } else {
             message = new LiteralText("The game ended, but nobody won!").formatted(Formatting.GOLD);
         }
