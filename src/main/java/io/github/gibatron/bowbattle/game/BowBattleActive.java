@@ -183,27 +183,24 @@ public class BowBattleActive {
         this.timerBar.update(this.stageManager.finishTime - time, this.config.timeLimitSecs * 20);
 
         PlayerSet players = this.gameSpace.getPlayers();
-        for (ServerPlayerEntity player : players)
-        {
-            boolean usingBow = player.getActiveItem().getItem() == Items.BOW;
-            player.sendMessage(new LiteralText(String.format("Times hit: %s", participants.get(PlayerRef.of(player)).timesHit)).formatted(Formatting.WHITE, Formatting.BOLD), true);
-            if (player.experienceLevel < 5 && !usingBow)
-            {
-                if (player.age % 4 == 0)
-                    player.addExperience(1);
-            }
-            //player.setNoGravity(usingBow);
-            if (usingBow)
-            {
-                if (!player.hasStatusEffect(StatusEffects.LEVITATION))
-                    player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10000, -1, true, false));
-                player.setVelocity(0, 0, 0);
-                player.velocityModified = true;
-            }
-            else
-            {
-                if (player.hasStatusEffect(StatusEffects.LEVITATION))
-                    player.removeStatusEffect(StatusEffects.LEVITATION);
+        for (ServerPlayerEntity player : players) {
+            if (!player.isSpectator()) {
+                boolean usingBow = player.getActiveItem().getItem() == Items.BOW;
+                player.sendMessage(new LiteralText(String.format("Times hit: %s", participants.get(PlayerRef.of(player)).timesHit)).formatted(Formatting.WHITE, Formatting.BOLD), true);
+                if (player.experienceLevel < 5 && !usingBow) {
+                    if (player.age % 4 == 0)
+                        player.addExperience(1);
+                }
+                //player.setNoGravity(usingBow);
+                if (usingBow) {
+                    if (!player.hasStatusEffect(StatusEffects.LEVITATION))
+                        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10000, -1, true, false));
+                    player.setVelocity(0, 0, 0);
+                    player.velocityModified = true;
+                } else {
+                    if (player.hasStatusEffect(StatusEffects.LEVITATION))
+                        player.removeStatusEffect(StatusEffects.LEVITATION);
+                }
             }
         }
     }
