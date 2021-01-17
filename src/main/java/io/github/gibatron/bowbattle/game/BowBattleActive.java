@@ -1,5 +1,6 @@
 package io.github.gibatron.bowbattle.game;
 
+import io.github.gibatron.bowbattle.BowBattle;
 import io.github.gibatron.bowbattle.game.map.BowBattleMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -20,6 +21,7 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import org.apache.commons.lang3.RandomStringUtils;
 import xyz.nucleoid.plasmid.game.GameSpace;
@@ -87,6 +89,9 @@ public class BowBattleActive {
             game.setRule(GameRule.BLOCK_DROPS, RuleResult.DENY);
             game.setRule(GameRule.THROW_ITEMS, RuleResult.DENY);
             game.setRule(GameRule.UNSTABLE_TNT, RuleResult.DENY);
+            game.setRule(BowBattle.BOW_SLOW_MO, RuleResult.ALLOW);
+            game.setRule(BowBattle.BOW_GRAPPLES_SOUL_LANTERNS, RuleResult.ALLOW);
+            game.setRule(BowBattle.XP_RESTOCKS_ARROWS, RuleResult.ALLOW);
 
             game.on(GameOpenListener.EVENT, active::onOpen);
             game.on(GameCloseListener.EVENT, active::onClose);
@@ -140,6 +145,8 @@ public class BowBattleActive {
 
     private ActionResult onPlayerFire(ServerPlayerEntity player, ItemStack bowStack, ArrowItem arrowItem, int remaining, PersistentProjectileEntity projectile) {
         projectile.pickupType = PersistentProjectileEntity.PickupPermission.DISALLOWED;
+        Vec3d velocity = projectile.getVelocity();
+        projectile.setVelocity(velocity.x, velocity.y, velocity.z, 3F, 1.0F);
         player.experienceLevel -= 1;
         return ActionResult.CONSUME;
     }
