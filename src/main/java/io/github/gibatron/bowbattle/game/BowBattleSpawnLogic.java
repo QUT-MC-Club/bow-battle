@@ -39,8 +39,9 @@ public class BowBattleSpawnLogic {
         bowStack.getOrCreateTag().putBoolean("Unbreakable", true);
         bowStack.addHideFlag(ItemStack.TooltipSection.UNBREAKABLE);
         player.inventory.setStack(0, bowStack);
+        player.inventory.insertStack(17, new ItemStack(Items.ARROW, 1));
         player.setExperiencePoints(0);
-        player.setExperienceLevel(0);
+        player.setExperienceLevel(1);
     }
 
     public void spawnPlayer(ServerPlayerEntity player) {
