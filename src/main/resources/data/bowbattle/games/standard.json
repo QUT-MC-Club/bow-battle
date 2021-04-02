@@ -1,5 +1,6 @@
 {
   "type": "bowbattle:bowbattle",
+  "name": "Bow Battle Standard",
   "map": {
     "id": "bowbattle:standard"
   },
