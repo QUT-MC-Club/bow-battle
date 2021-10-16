@@ -26,14 +26,17 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import org.apache.commons.lang3.RandomStringUtils;
+import xyz.nucleoid.plasmid.game.GameCloseReason;
 import xyz.nucleoid.plasmid.game.GameSpace;
-import xyz.nucleoid.plasmid.game.event.*;
-import xyz.nucleoid.plasmid.game.player.JoinResult;
+import xyz.nucleoid.plasmid.game.event.GameActivityEvents;
+import xyz.nucleoid.plasmid.game.event.GamePlayerEvents;
 import xyz.nucleoid.plasmid.game.player.PlayerSet;
-import xyz.nucleoid.plasmid.game.rule.GameRule;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
+import xyz.nucleoid.plasmid.game.rule.GameRuleType;
 import xyz.nucleoid.plasmid.util.PlayerRef;
-import xyz.nucleoid.plasmid.widget.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
+import xyz.nucleoid.stimuli.event.player.PlayerDamageEvent;
+import xyz.nucleoid.stimuli.event.player.PlayerDeathEvent;
+import xyz.nucleoid.stimuli.event.projectile.ArrowFireEvent;
 
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +45,7 @@ import java.util.stream.Collectors;
 public class BowBattleActive {
     private final BowBattleConfig config;
 
+    public final ServerWorld world;
     public final GameSpace gameSpace;
     private final BowBattleMap gameMap;
 
@@ -52,11 +56,12 @@ public class BowBattleActive {
     private final BowBattleTimerBar timerBar;
     private final Team scoreboardTeam;
 
-    private BowBattleActive(GameSpace gameSpace, BowBattleMap map, GlobalWidgets widgets, BowBattleConfig config, Set<PlayerRef> participants) {
+    private BowBattleActive(GameSpace gameSpace, ServerWorld world, BowBattleMap map, GlobalWidgets widgets, BowBattleConfig config, Set<PlayerRef> participants) {
+        this.world = world;
         this.gameSpace = gameSpace;
         this.config = config;
         this.gameMap = map;
-        this.spawnLogic = new BowBattleSpawnLogic(gameSpace, map);
+        this.spawnLogic = new BowBattleSpawnLogic(this.world, map);
         this.participants = new Object2ObjectOpenHashMap<>();
 
         Scoreboard scoreboard = gameSpace.getServer().getScoreboard();
@@ -65,7 +70,7 @@ public class BowBattleActive {
         scoreboardTeam.setCollisionRule(AbstractTeam.CollisionRule.NEVER);
 
         for (PlayerRef player : participants) {
-            scoreboard.addPlayerToTeam(player.getEntity(gameSpace.getWorld()).getName().asString(), scoreboardTeam);
+            scoreboard.addPlayerToTeam(player.getEntity(this.world).getName().asString(), scoreboardTeam);
             this.participants.put(player, new BowBattlePlayer());
         }
 
@@ -74,48 +79,52 @@ public class BowBattleActive {
         this.timerBar = new BowBattleTimerBar(widgets);
     }
 
-    public static void open(GameSpace gameSpace, BowBattleMap map, BowBattleConfig config) {
-        gameSpace.openGame(game -> {
+    public static void open(GameSpace gameSpace, ServerWorld world, BowBattleMap map, BowBattleConfig config) {
+        gameSpace.setActivity(activity -> {
+            var widgets = GlobalWidgets.addTo(activity);
+
             Set<PlayerRef> participants = gameSpace.getPlayers().stream()
                     .map(PlayerRef::of)
                     .collect(Collectors.toSet());
-            GlobalWidgets widgets = new GlobalWidgets(game);
-            BowBattleActive active = new BowBattleActive(gameSpace, map, widgets, config, participants);
 
-            game.setRule(GameRule.CRAFTING, RuleResult.DENY);
-            game.setRule(GameRule.PORTALS, RuleResult.DENY);
-            game.setRule(GameRule.PVP, RuleResult.ALLOW);
-            game.setRule(GameRule.HUNGER, RuleResult.DENY);
-            game.setRule(GameRule.FALL_DAMAGE, RuleResult.DENY);
-            game.setRule(GameRule.INTERACTION, RuleResult.DENY);
-            game.setRule(GameRule.BLOCK_DROPS, RuleResult.DENY);
-            game.setRule(GameRule.THROW_ITEMS, RuleResult.DENY);
-            game.setRule(GameRule.UNSTABLE_TNT, RuleResult.DENY);
-            game.setRule(BowBattle.BOW_SLOW_MO, RuleResult.ALLOW);
-            game.setRule(BowBattle.BOW_GRAPPLES_SOUL_LANTERNS, RuleResult.ALLOW);
-            game.setRule(BowBattle.XP_RESTOCKS_ARROWS, RuleResult.ALLOW);
+            var active = new BowBattleActive(gameSpace, world, map, widgets, config, participants);
 
-            game.on(GameOpenListener.EVENT, active::onOpen);
-            game.on(GameCloseListener.EVENT, active::onClose);
+            activity.deny(GameRuleType.CRAFTING);
+            activity.deny(GameRuleType.PORTALS);
+            activity.deny(GameRuleType.BLOCK_DROPS);
+            activity.deny(GameRuleType.FALL_DAMAGE);
+            activity.deny(GameRuleType.HUNGER);
+            activity.deny(GameRuleType.THROW_ITEMS);
+            activity.deny(GameRuleType.UNSTABLE_TNT);
+            activity.deny(GameRuleType.MODIFY_INVENTORY);
 
-            game.on(OfferPlayerListener.EVENT, player -> JoinResult.ok());
-            game.on(PlayerAddListener.EVENT, active::addPlayer);
-            game.on(PlayerRemoveListener.EVENT, active::removePlayer);
+            activity.allow(GameRuleType.PVP);
+            activity.allow(GameRuleType.USE_ITEMS);
+            activity.allow(GameRuleType.INTERACTION);
+            activity.allow(BowBattle.BOW_SLOW_MO);
+            activity.allow(BowBattle.BOW_GRAPPLES_SOUL_LANTERNS);
+            activity.allow(BowBattle.XP_RESTOCKS_ARROWS);
 
-            game.on(GameTickListener.EVENT, active::tick);
+            activity.listen(GameActivityEvents.ENABLE, active::onOpen);
+            activity.listen(GameActivityEvents.DISABLE, active::onClose);
 
-            game.on(PlayerDamageListener.EVENT, active::onPlayerDamage);
-            game.on(PlayerDeathListener.EVENT, active::onPlayerDeath);
-            game.on(PlayerFireArrowListener.EVENT, active::onPlayerFire);
+            activity.listen(GamePlayerEvents.OFFER, offer -> offer.accept(active.world, active.gameMap.getSpawn(0).center()));
+            activity.listen(GamePlayerEvents.ADD, active::addPlayer);
+            activity.listen(GamePlayerEvents.REMOVE, active::removePlayer);
+
+            activity.listen(GameActivityEvents.TICK, active::tick);
+
+            activity.listen(PlayerDeathEvent.EVENT, active::onPlayerDeath);
+            activity.listen(PlayerDamageEvent.EVENT, active::onPlayerDamage);
+            activity.listen(ArrowFireEvent.EVENT, active::onPlayerFire);
         });
     }
 
     private void onOpen() {
-        ServerWorld world = this.gameSpace.getWorld();
         for (PlayerRef ref : this.participants.keySet()) {
-            ref.ifOnline(world, this::spawnParticipant);
+            ref.ifOnline(this.world, this::spawnParticipant);
         }
-        this.stageManager.onOpen(world.getTime(), this.config);
+        this.stageManager.onOpen(this.world.getTime(), this.config);
     }
 
     private void onClose() {
@@ -135,13 +144,13 @@ public class BowBattleActive {
     private ActionResult onPlayerDamage(ServerPlayerEntity player, DamageSource source, float amount) {
         if (source.isProjectile() && source.getAttacker() != player) {
             if (source.getAttacker() != null) {
-                ((ServerPlayerEntity)source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
+                ((ServerPlayerEntity) source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
                 gameSpace.getPlayers().sendMessage(new LiteralText(String.format("☠ - %s was shot by %s", player.getDisplayName().getString(), source.getAttacker().getDisplayName().getString())).formatted(Formatting.GRAY));
+                participants.get(PlayerRef.of((ServerPlayerEntity) source.getAttacker())).kills += 1;
             }
-            participants.get(PlayerRef.of(player)).timesHit += 1;
             //Thanks Potatoboy9999 ;)
             for (int i = 0; i < 75; i++) {
-                gameSpace.getWorld().spawnParticles(
+                this.world.spawnParticles(
                         ParticleTypes.FIREWORK,
                         player.getPos().getX(),
                         player.getPos().getY() + 1.0f,
@@ -150,7 +159,8 @@ public class BowBattleActive {
                         ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
                         ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
                         ((player.getRandom().nextFloat() * 2.0f) - 1.0f) * 0.35f,
-                        0.1);
+                        0.1
+                );
             }
             this.spawnParticipant(player);
         }
@@ -165,9 +175,10 @@ public class BowBattleActive {
     private ActionResult onPlayerFire(ServerPlayerEntity player, ItemStack bowStack, ArrowItem arrowItem, int remaining, PersistentProjectileEntity projectile) {
         projectile.pickupType = PersistentProjectileEntity.PickupPermission.DISALLOWED;
         Vec3d velocity = projectile.getVelocity();
-        projectile.setVelocity(velocity.x, velocity.y, velocity.z, 3F, 1.0F);
+        projectile.setVelocity(velocity.x, velocity.y, velocity.z, 5F, 0.0F);
+        projectile.setNoGravity(true);
         player.experienceLevel -= 1;
-        return ActionResult.CONSUME;
+        return ActionResult.PASS;
     }
 
     private void spawnParticipant(ServerPlayerEntity player) {
@@ -181,8 +192,7 @@ public class BowBattleActive {
     }
 
     private void tick() {
-        ServerWorld world = this.gameSpace.getWorld();
-        long time = world.getTime();
+        long time = this.world.getTime();
 
         BowBattleStageManager.IdleTickResult result = this.stageManager.tick(time, gameSpace);
 
@@ -195,48 +205,64 @@ public class BowBattleActive {
                 this.broadcastWin(this.checkWinResult());
                 return;
             case GAME_CLOSED:
-                this.gameSpace.close();
+                this.gameSpace.close(GameCloseReason.FINISHED);
                 return;
         }
 
-        this.timerBar.update(this.stageManager.finishTime - time, this.config.timeLimitSecs * 20);
+        this.timerBar.update(this.stageManager.finishTime - time, this.config.timeLimitSecs() * 20L);
 
         PlayerSet players = this.gameSpace.getPlayers();
         for (ServerPlayerEntity player : players) {
             if (!player.isSpectator()) {
                 boolean usingBow = player.getActiveItem().getItem() == Items.BOW;
-                player.sendMessage(new LiteralText(String.format("Times hit: %s", participants.get(PlayerRef.of(player)).timesHit)).formatted(Formatting.WHITE, Formatting.BOLD), true);
+                player.sendMessage(new LiteralText(String.format("Kills: %s", participants.get(PlayerRef.of(player)).kills)).formatted(Formatting.WHITE, Formatting.BOLD), true);
                 if (player.experienceLevel < 5 && !usingBow) {
                     if (player.age % 4 == 0)
                         player.addExperience(1);
                 }
                 //player.setNoGravity(usingBow);
-                if (usingBow) {
-                    if (!player.hasStatusEffect(StatusEffects.LEVITATION))
-                        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10000, -1, true, false));
+                if (usingBow && player.getInventory().contains(Items.ARROW.getDefaultStack()) && player.getInventory().getStack(17).getCount() > 0) {
+                    applyHoverLevitation(player);
                     player.setVelocity(0, 0, 0);
                     player.velocityModified = true;
                 } else {
-                    if (player.hasStatusEffect(StatusEffects.LEVITATION))
+                    if (player.hasStatusEffect(StatusEffects.LEVITATION) && player.getStatusEffect(StatusEffects.LEVITATION).getAmplifier() != 254)
                         player.removeStatusEffect(StatusEffects.LEVITATION);
+                }
+
+                if (!player.hasStatusEffect(StatusEffects.INVISIBILITY) && !player.hasStatusEffect(StatusEffects.GLOWING)) {
+                    player.addStatusEffect(new StatusEffectInstance(
+                            StatusEffects.GLOWING,
+                            20 * 60 * 60,
+                            1,
+                            true,
+                            false
+                    ));
                 }
             }
         }
     }
 
+    private void applyHoverLevitation(ServerPlayerEntity player) {
+        if (!player.hasStatusEffect(StatusEffects.LEVITATION) || player.getStatusEffect(StatusEffects.LEVITATION).getAmplifier() == 254) {
+            player.removeStatusEffect(StatusEffects.LEVITATION);
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10000, -1, true, false));
+        }
+    }
+
     private void broadcastWin(WinResult result) {
-        ServerPlayerEntity winningPlayer = result.getWinningPlayer();
+        ServerPlayerEntity winningPlayer = result.winningPlayer();
 
         Text message;
         if (winningPlayer != null) {
-            message = new LiteralText("★ - ").append(winningPlayer.getDisplayName().shallowCopy().append(" has won the game by only being hit " + participants.get(PlayerRef.of(winningPlayer)).timesHit + " times!").formatted(Formatting.GOLD));
+            message = new LiteralText("★ - ").append(winningPlayer.getDisplayName().shallowCopy().append(" has won the game by getting " + participants.get(PlayerRef.of(winningPlayer)).kills + " kills!").formatted(Formatting.GOLD));
         } else {
             message = new LiteralText("The game ended, but nobody won!").formatted(Formatting.GOLD);
         }
 
         PlayerSet players = this.gameSpace.getPlayers();
         players.sendMessage(message);
-        players.sendSound(SoundEvents.ENTITY_VILLAGER_YES);
+        players.playSound(SoundEvents.ENTITY_VILLAGER_YES);
     }
 
     private WinResult checkWinResult() {
@@ -245,30 +271,20 @@ public class BowBattleActive {
             return WinResult.no();
         }
 
-        ServerWorld world = this.gameSpace.getWorld();
-        ServerPlayerEntity winningPlayer = null;
-
         PlayerRef best = null;
         for (Map.Entry<PlayerRef, BowBattlePlayer> entry : participants.entrySet())
         {
             if (best == null)
                 best = entry.getKey();
-            else if (participants.get(best).timesHit > entry.getValue().timesHit)
+            else if (participants.get(best).kills < entry.getValue().kills)
                 best = entry.getKey();
         }
         if (best != null)
-            return WinResult.win(best.getEntity(gameSpace.getWorld()));
+            return WinResult.win(best.getEntity(this.world));
         return WinResult.no();
     }
 
-    static class WinResult {
-        final ServerPlayerEntity winningPlayer;
-        final boolean win;
-
-        private WinResult(ServerPlayerEntity winningPlayer, boolean win) {
-            this.winningPlayer = winningPlayer;
-            this.win = win;
-        }
+    record WinResult(ServerPlayerEntity winningPlayer, boolean win) {
 
         static WinResult no() {
             return new WinResult(null, false);
@@ -276,14 +292,6 @@ public class BowBattleActive {
 
         static WinResult win(ServerPlayerEntity player) {
             return new WinResult(player, true);
-        }
-
-        public boolean isWin() {
-            return this.win;
-        }
-
-        public ServerPlayerEntity getWinningPlayer() {
-            return this.winningPlayer;
         }
     }
 }

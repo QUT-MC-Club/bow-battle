@@ -5,9 +5,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.util.ActionResult;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,8 +15,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import xyz.nucleoid.plasmid.game.ManagedGameSpace;
-import xyz.nucleoid.plasmid.game.rule.RuleResult;
+import xyz.nucleoid.plasmid.game.manager.GameSpaceManager;
 
 @Mixin(PlayerEntity.class)
 public abstract class PlayerEntityMixin extends Entity {
@@ -29,8 +28,8 @@ public abstract class PlayerEntityMixin extends Entity {
 
     @Inject(method = "addExperienceLevels", at = @At("HEAD"))
     private void addExperienceLevels(int levels, CallbackInfo ci) {
-        ManagedGameSpace gameSpace = ManagedGameSpace.forWorld(world);
-        if (gameSpace != null && gameSpace.testRule(BowBattle.XP_RESTOCKS_ARROWS) == RuleResult.ALLOW)
+        var gameSpace = GameSpaceManager.get().byWorld(this.world);
+        if (gameSpace != null && gameSpace.getBehavior().testRule(BowBattle.XP_RESTOCKS_ARROWS) == ActionResult.SUCCESS)
             this.inventory.insertStack(17, new ItemStack(Items.ARROW, 1));
     }
 }

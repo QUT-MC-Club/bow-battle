@@ -1,8 +1,8 @@
 package io.github.gibatron.bowbattle.game;
 
 import net.minecraft.entity.boss.BossBar;
-import xyz.nucleoid.plasmid.widget.BossBarWidget;
-import xyz.nucleoid.plasmid.widget.GlobalWidgets;
+import xyz.nucleoid.plasmid.game.common.widget.BossBarWidget;
+import xyz.nucleoid.plasmid.game.common.GlobalWidgets;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 
