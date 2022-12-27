@@ -19,7 +19,6 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
@@ -70,7 +69,7 @@ public class BowBattleActive {
         scoreboardTeam.setCollisionRule(AbstractTeam.CollisionRule.NEVER);
 
         for (PlayerRef player : participants) {
-            scoreboard.addPlayerToTeam(player.getEntity(this.world).getName().asString(), scoreboardTeam);
+            scoreboard.addPlayerToTeam(player.getEntity(this.world).getName().getString(), scoreboardTeam);
             this.participants.put(player, new BowBattlePlayer());
         }
 
@@ -145,7 +144,7 @@ public class BowBattleActive {
         if (source.isProjectile() && source.getAttacker() != player) {
             if (source.getAttacker() != null) {
                 ((ServerPlayerEntity) source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
-                gameSpace.getPlayers().sendMessage(new LiteralText(String.format("☠ - %s was shot by %s", player.getDisplayName().getString(), source.getAttacker().getDisplayName().getString())).formatted(Formatting.GRAY));
+                gameSpace.getPlayers().sendMessage(Text.literal(String.format("☠ - %s was shot by %s", player.getDisplayName().getString(), source.getAttacker().getDisplayName().getString())).formatted(Formatting.GRAY));
                 participants.get(PlayerRef.of((ServerPlayerEntity) source.getAttacker())).kills += 1;
             }
             //Thanks Potatoboy9999 ;)
@@ -215,7 +214,7 @@ public class BowBattleActive {
         for (ServerPlayerEntity player : players) {
             if (!player.isSpectator()) {
                 boolean usingBow = player.getActiveItem().getItem() == Items.BOW;
-                player.sendMessage(new LiteralText(String.format("Kills: %s", participants.get(PlayerRef.of(player)).kills)).formatted(Formatting.WHITE, Formatting.BOLD), true);
+                player.sendMessage(Text.literal(String.format("Kills: %s", participants.get(PlayerRef.of(player)).kills)).formatted(Formatting.WHITE, Formatting.BOLD), true);
                 if (player.experienceLevel < 5 && !usingBow) {
                     if (player.age % 4 == 0)
                         player.addExperience(1);
@@ -255,9 +254,9 @@ public class BowBattleActive {
 
         Text message;
         if (winningPlayer != null) {
-            message = new LiteralText("★ - ").append(winningPlayer.getDisplayName().shallowCopy().append(" has won the game by getting " + participants.get(PlayerRef.of(winningPlayer)).kills + " kills!").formatted(Formatting.GOLD));
+            message = Text.literal("★ - ").append(winningPlayer.getDisplayName().copy().append(" has won the game by getting " + participants.get(PlayerRef.of(winningPlayer)).kills + " kills!").formatted(Formatting.GOLD));
         } else {
-            message = new LiteralText("The game ended, but nobody won!").formatted(Formatting.GOLD);
+            message = Text.literal("The game ended, but nobody won!").formatted(Formatting.GOLD);
         }
 
         PlayerSet players = this.gameSpace.getPlayers();

@@ -3,7 +3,6 @@ package io.github.gibatron.bowbattle.game;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.gibatron.bowbattle.game.map.BowBattleMapConfig;
-import net.minecraft.util.Identifier;
 import xyz.nucleoid.plasmid.game.common.config.PlayerConfig;
 
 public record BowBattleConfig(PlayerConfig players, BowBattleMapConfig map, int timeLimitSecs) {
