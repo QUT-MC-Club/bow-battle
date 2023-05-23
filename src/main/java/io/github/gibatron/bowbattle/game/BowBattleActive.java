@@ -12,6 +12,7 @@ import net.minecraft.item.ArrowItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.scoreboard.AbstractTeam;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.scoreboard.Team;
@@ -141,7 +142,7 @@ public class BowBattleActive {
     }
 
     private ActionResult onPlayerDamage(ServerPlayerEntity player, DamageSource source, float amount) {
-        if (source.isProjectile() && source.getAttacker() != player) {
+        if (source.isIn(DamageTypeTags.IS_PROJECTILE) && source.getAttacker() != player) {
             if (source.getAttacker() != null) {
                 ((ServerPlayerEntity) source.getAttacker()).playSound(SoundEvents.ENTITY_ARROW_HIT_PLAYER, SoundCategory.PLAYERS, 1f, 1f);
                 gameSpace.getPlayers().sendMessage(Text.literal(String.format("☠ - %s was shot by %s", player.getDisplayName().getString(), source.getAttacker().getDisplayName().getString())).formatted(Formatting.GRAY));
@@ -232,7 +233,7 @@ public class BowBattleActive {
                 if (!player.hasStatusEffect(StatusEffects.INVISIBILITY) && !player.hasStatusEffect(StatusEffects.GLOWING)) {
                     player.addStatusEffect(new StatusEffectInstance(
                             StatusEffects.GLOWING,
-                            20 * 60 * 60,
+                            StatusEffectInstance.INFINITE,
                             1,
                             true,
                             false
@@ -245,7 +246,7 @@ public class BowBattleActive {
     private void applyHoverLevitation(ServerPlayerEntity player) {
         if (!player.hasStatusEffect(StatusEffects.LEVITATION) || player.getStatusEffect(StatusEffects.LEVITATION).getAmplifier() == 254) {
             player.removeStatusEffect(StatusEffects.LEVITATION);
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, 10000, -1, true, false));
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.LEVITATION, StatusEffectInstance.INFINITE, -1, true, false));
         }
     }
 

@@ -8,7 +8,7 @@ import net.minecraft.text.Text;
 import xyz.nucleoid.plasmid.game.GameSpace;
 import xyz.nucleoid.plasmid.game.player.PlayerSet;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket.Flag;
+import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
@@ -84,7 +84,7 @@ public class BowBattleStageManager {
                 double destZ = state.lastPos.z;
 
                 // Set X and Y as relative so it will send 0 change when we pass yaw (yaw - yaw = 0) and pitch
-                Set<Flag> flags = ImmutableSet.of(Flag.X_ROT, Flag.Y_ROT);
+                Set<PositionFlag> flags = ImmutableSet.of(PositionFlag.X_ROT, PositionFlag.Y_ROT);
 
                 // Teleport without changing the pitch and yaw
                 player.networkHandler.requestTeleport(destX, destY, destZ, player.getYaw(), player.getPitch(), flags);
