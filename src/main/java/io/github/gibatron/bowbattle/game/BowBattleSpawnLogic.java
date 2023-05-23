@@ -28,7 +28,7 @@ public record BowBattleSpawnLogic(ServerWorld world, BowBattleMap map) {
 
         player.addStatusEffect(new StatusEffectInstance(
                 StatusEffects.SPEED,
-                20 * 60 * 60,
+                StatusEffectInstance.INFINITE,
                 1,
                 true,
                 false
