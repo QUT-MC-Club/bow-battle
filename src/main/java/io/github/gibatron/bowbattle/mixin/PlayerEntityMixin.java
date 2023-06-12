@@ -28,7 +28,7 @@ public abstract class PlayerEntityMixin extends Entity {
 
     @Inject(method = "addExperienceLevels", at = @At("HEAD"))
     private void addExperienceLevels(int levels, CallbackInfo ci) {
-        var gameSpace = GameSpaceManager.get().byWorld(this.world);
+        var gameSpace = GameSpaceManager.get().byWorld(this.getWorld());
         if (gameSpace != null && gameSpace.getBehavior().testRule(BowBattle.XP_RESTOCKS_ARROWS) == ActionResult.SUCCESS)
             this.inventory.insertStack(17, new ItemStack(Items.ARROW, 1));
     }
