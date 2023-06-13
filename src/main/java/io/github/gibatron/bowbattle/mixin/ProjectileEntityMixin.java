@@ -30,7 +30,8 @@ public abstract class ProjectileEntityMixin extends Entity {
 
     @Inject(method = "onBlockHit", at = @At("HEAD"))
     private void onBlockHit(BlockHitResult blockHitResult, CallbackInfo ci) {
-        var gameSpace = GameSpaceManager.get().byWorld(this.world);
+        var world = this.getWorld();
+        var gameSpace = GameSpaceManager.get().byWorld(world);
         if (gameSpace != null && gameSpace.getBehavior().testRule(BowBattle.BOW_GRAPPLES_SOUL_LANTERNS) == ActionResult.SUCCESS) {
             if (world.getBlockState(blockHitResult.getBlockPos()).getBlock() == Blocks.SOUL_LANTERN) {
                 if (ownerUuid != null && world instanceof ServerWorld) {
