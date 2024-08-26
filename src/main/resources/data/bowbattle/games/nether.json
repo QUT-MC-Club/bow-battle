@@ -2,7 +2,9 @@
   "type": "bowbattle:bowbattle",
   "name": "Bow Battle Nether",
   "icon": "minecraft:bow",
-  "description": "game.bowbattle.standard.desc",
+  "description": {
+    "translate": "gameType.bowbattle.bowbattle.desc"
+  },
   "map": {
     "id": "bowbattle:nether"
   },
